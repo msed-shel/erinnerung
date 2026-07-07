@@ -210,22 +210,23 @@
       visibility: visible;
     }
 
-    /* Kleiner, ruhiger Titel über der Galerie */
-    .gallery__heading {
+    /* Ruhiger Satz oben über der Galerie
+       (gleiche Schriftart/Stil wie zuvor der Schlusssatz) */
+    .gallery__intro {
       text-align: center;
       font-family: var(--font-serif);
       font-weight: 300;
-      font-size: clamp(1.4rem, 3.5vw, 2.2rem);
-      color: var(--color-text);
+      font-style: italic;
+      font-size: clamp(1.1rem, 2.6vw, 1.6rem);
+      color: #6b6b6b;
       margin-bottom: clamp(2.5rem, 6vh, 4.5rem);
-      letter-spacing: 0.02em;
 
       opacity: 0;
       transform: translateY(10px);
       transition: opacity 1.4s var(--ease-soft),
                   transform 1.4s var(--ease-soft);
     }
-    .gallery__heading.reveal {
+    .gallery__intro.reveal {
       opacity: 1;
       transform: translateY(0);
     }
@@ -279,25 +280,82 @@
       transform: scale(1.04);
     }
 
-    /* Abschließender, ruhiger Schlusssatz */
-    .gallery__outro {
-      text-align: center;
-      font-family: var(--font-serif);
-      font-weight: 300;
-      font-style: italic;
-      font-size: clamp(1.1rem, 2.6vw, 1.6rem);
-      color: #6b6b6b;
-      margin-top: clamp(3.5rem, 8vh, 6rem);
+    /* =========================================================
+       4b. Dezenter Musik-Umschalter (Pause / Play) auf der Fotoseite
+       ========================================================= */
+    .audio-toggle {
+      position: fixed;
+      right: clamp(1.2rem, 3vw, 2.2rem);
+      bottom: clamp(1.2rem, 3vw, 2.2rem);
+      z-index: 20;
 
+      width: 56px;
+      height: 56px;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+
+      /* Gleicher, leichter Glas-Look wie der Play-Button */
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 8px 28px rgba(45, 45, 45, 0.14),
+                  0 2px 6px rgba(45, 45, 45, 0.06);
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      /* Anfangs verborgen; erscheint mit der Galerie */
       opacity: 0;
+      visibility: hidden;
       transform: translateY(10px);
-      transition: opacity 1.6s var(--ease-soft),
-                  transform 1.6s var(--ease-soft);
+      transition: opacity 1s var(--ease-soft),
+                  visibility 1s var(--ease-soft),
+                  transform 0.45s var(--ease-soft),
+                  background 0.45s var(--ease-soft),
+                  box-shadow 0.45s var(--ease-soft);
     }
-    .gallery__outro.reveal {
+
+    .audio-toggle.is-visible {
       opacity: 1;
+      visibility: visible;
       transform: translateY(0);
     }
+
+    .audio-toggle:hover,
+    .audio-toggle:focus-visible {
+      transform: scale(1.08);
+      background: rgba(255, 255, 255, 0.85);
+      outline: none;
+    }
+    .audio-toggle:active {
+      transform: scale(0.96);
+    }
+
+    /* Pause-Symbol: zwei schmale Balken */
+    .audio-toggle__pause {
+      width: 16px;
+      height: 18px;
+      border-left: 5px solid var(--color-text);
+      border-right: 5px solid var(--color-text);
+      box-sizing: border-box;
+    }
+
+    /* Play-Symbol: kleines Dreieck (wie der Haupt-Button) */
+    .audio-toggle__play {
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 9px 0 9px 15px;
+      border-color: transparent transparent transparent var(--color-text);
+      margin-left: 4px; /* optische Zentrierung */
+      display: none;    /* Standard: Musik läuft -> Pause-Symbol sichtbar */
+    }
+
+    /* Zustand "pausiert": Play-Symbol zeigen, Pause-Symbol ausblenden */
+    .audio-toggle.is-paused .audio-toggle__pause { display: none; }
+    .audio-toggle.is-paused .audio-toggle__play  { display: block; }
 
     /* =========================================================
        5. Keyframe-Animationen
@@ -337,37 +395,23 @@
        Galerie: erscheint nach dem Klick auf Play
        ========================================================= -->
   <main class="gallery-wrap" id="galleryWrap">
-    <h2 class="gallery__heading" id="galleryHeading">Ein Nachklang in Bildern</h2>
-
-    <div class="gallery" id="gallery">
-      <!-- Platzhalter-Bilder: einfach die Dateien in /assets ablegen -->
-      <figure class="gallery__item">
-        <img src="assets/photo1.jpg" alt="Erinnerung 1" loading="lazy" />
-      </figure>
-      <figure class="gallery__item">
-        <img src="assets/photo2.jpg" alt="Erinnerung 2" loading="lazy" />
-      </figure>
-      <figure class="gallery__item">
-        <img src="assets/photo3.jpg" alt="Erinnerung 3" loading="lazy" />
-      </figure>
-      <figure class="gallery__item">
-        <img src="assets/photo4.jpg" alt="Erinnerung 4" loading="lazy" />
-      </figure>
-      <figure class="gallery__item">
-        <img src="assets/photo5.jpg" alt="Erinnerung 5" loading="lazy" />
-      </figure>
-      <figure class="gallery__item">
-        <img src="assets/photo6.jpg" alt="Erinnerung 6" loading="lazy" />
-      </figure>
-    </div>
-
-    <p class="gallery__outro" id="galleryOutro">
+    <!-- Ruhiger Satz oben -->
+    <p class="gallery__intro" id="galleryIntro">
       Danke, dass du einen Moment bleibst.
     </p>
+
+    <!-- Wird automatisch aus dem assets-Ordner befüllt (siehe JavaScript) -->
+    <div class="gallery" id="gallery"></div>
   </main>
 
   <!-- Audio-Element ohne sichtbare Steuerung (kein visibler Player) -->
   <audio id="audio" src="assets/song.mp3" preload="auto"></audio>
+
+  <!-- Dezenter Musik-Umschalter (erscheint mit der Galerie) -->
+  <button class="audio-toggle" id="audioToggle" aria-label="Musik pausieren">
+    <span class="audio-toggle__pause" aria-hidden="true"></span>
+    <span class="audio-toggle__play" aria-hidden="true"></span>
+  </button>
 
   <script>
     /* =========================================================
@@ -381,33 +425,93 @@
       const playButton   = document.getElementById('playButton');
       const audio        = document.getElementById('audio');
       const galleryWrap  = document.getElementById('galleryWrap');
-      const galleryHead  = document.getElementById('galleryHeading');
-      const galleryOutro = document.getElementById('galleryOutro');
-      const items        = document.querySelectorAll('.gallery__item');
+      const galleryIntro = document.getElementById('galleryIntro');
+      const gallery      = document.getElementById('gallery');
+      const audioToggle  = document.getElementById('audioToggle');
 
       let started = false; // verhindert Mehrfach-Auslösung
 
+      /* ---------------------------------------------------------
+         Konfiguration der automatischen Bild-Erkennung
+         ---------------------------------------------------------
+         Ein statischer Server (z. B. GitHub Pages) liefert keine
+         Ordner-Auflistung. Deshalb werden die Bilder anhand ihres
+         Namensmusters "der Reihe nach" gesucht: photo1, photo2, …
+         Es wird geladen, bis eine Nummer in keiner der bekannten
+         Endungen mehr existiert. So werden automatisch ALLE Bilder
+         im assets-Ordner angezeigt – egal ob 3, 6 oder 20 Stück.
+         Einfach nach dem Muster benennen: photo1.jpg, photo2.jpg …
+      --------------------------------------------------------- */
+      const IMAGE_BASE   = 'assets/photo';       // Namens-Präfix
+      const EXTENSIONS   = ['jpg', 'jpeg', 'png', 'webp']; // erlaubte Endungen
+      const MAX_IMAGES   = 60;                    // Sicherheits-Obergrenze
+      const STAGGER_MS   = 500;                   // Versatz zwischen Bildern
+
       /**
-       * Blendet die Galerie-Elemente nacheinander (gestaffelt) ein,
-       * damit ein ruhiger, eleganter Aufbau entsteht.
+       * Versucht, eine Bild-URL zu laden. Löst mit der URL auf, wenn
+       * das Bild existiert – sonst mit null.
        */
-      function revealGallery() {
-        // Titel zuerst
-        window.setTimeout(function () {
-          galleryHead.classList.add('reveal');
-        }, 400);
-
-        // Bilder nacheinander mit sanftem Versatz
-        items.forEach(function (item, index) {
-          window.setTimeout(function () {
-            item.classList.add('reveal');
-          }, 900 + index * 550); // ~0,55s Abstand pro Bild
+      function tryLoad(url) {
+        return new Promise(function (resolve) {
+          const img = new Image();
+          img.onload  = function () { resolve(url); };
+          img.onerror = function () { resolve(null); };
+          img.src = url;
         });
+      }
 
-        // Schlusssatz zum Ende
+      /**
+       * Sucht für eine Nummer (z. B. 3) das passende Bild über alle
+       * erlaubten Endungen hinweg. Gibt die erste gefundene URL zurück.
+       */
+      async function findImage(index) {
+        for (const ext of EXTENSIONS) {
+          const url = IMAGE_BASE + index + '.' + ext;
+          const found = await tryLoad(url);
+          if (found) return found;
+        }
+        return null;
+      }
+
+      /**
+       * Fügt ein gefundenes Bild elegant in die Galerie ein und
+       * blendet es mit sanftem Versatz ein.
+       */
+      function appendImage(url, position) {
+        const figure = document.createElement('figure');
+        figure.className = 'gallery__item';
+
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Erinnerung ' + position;
+        img.loading = 'lazy';
+
+        figure.appendChild(img);
+        gallery.appendChild(figure);
+
+        // Reveal mit sanftem, gestaffeltem Versatz
         window.setTimeout(function () {
-          galleryOutro.classList.add('reveal');
-        }, 900 + items.length * 550 + 600);
+          figure.classList.add('reveal');
+        }, 200 + position * STAGGER_MS);
+      }
+
+      /**
+       * Durchläuft photo1, photo2, … bis zur ersten fehlenden Nummer
+       * und zeigt alle gefundenen Bilder nacheinander an.
+       */
+      async function loadGallery() {
+        // Satz oben zuerst einblenden
+        window.setTimeout(function () {
+          galleryIntro.classList.add('reveal');
+        }, 300);
+
+        let count = 0;
+        for (let i = 1; i <= MAX_IMAGES; i++) {
+          const url = await findImage(i);
+          if (!url) break;          // keine weitere Nummer -> fertig
+          count++;
+          appendImage(url, count);
+        }
       }
 
       /**
@@ -430,15 +534,41 @@
         // Galerie nach dem Ausblenden des Intros zeigen
         window.setTimeout(function () {
           galleryWrap.classList.add('is-visible');
-          revealGallery();
+          audioToggle.classList.add('is-visible'); // Musik-Umschalter einblenden
+          loadGallery();
 
           // Sanft zur Galerie scrollen
           galleryWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 1200);
       }
 
+      /**
+       * Schaltet die Musik zwischen Abspielen und Pause um und
+       * aktualisiert Symbol sowie Beschriftung des Buttons.
+       */
+      function toggleAudio() {
+        if (audio.paused) {
+          audio.play().catch(function () {});
+          audioToggle.classList.remove('is-paused');
+          audioToggle.setAttribute('aria-label', 'Musik pausieren');
+        } else {
+          audio.pause();
+          audioToggle.classList.add('is-paused');
+          audioToggle.setAttribute('aria-label', 'Musik fortsetzen');
+        }
+      }
+
+      // Falls die Musik von selbst endet, Button auf "Play" zurücksetzen
+      audio.addEventListener('ended', function () {
+        audioToggle.classList.add('is-paused');
+        audioToggle.setAttribute('aria-label', 'Musik fortsetzen');
+      });
+
       // Klick auf den Play-Button startet alles
       playButton.addEventListener('click', startExperience);
+
+      // Klick auf den Umschalter pausiert / startet die Musik
+      audioToggle.addEventListener('click', toggleAudio);
     })();
   </script>
 </body>
