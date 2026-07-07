@@ -281,14 +281,68 @@
     }
 
     /* =========================================================
-       4b. Dezenter Musik-Umschalter (Pause / Play) auf der Fotoseite
+       4b. Dezente Musik-Leiste (Titel/Interpret + Pause/Play)
        ========================================================= */
-    .audio-toggle {
+    .audio-bar {
       position: fixed;
       right: clamp(1.2rem, 3vw, 2.2rem);
       bottom: clamp(1.2rem, 3vw, 2.2rem);
       z-index: 20;
 
+      display: flex;
+      align-items: center;
+      gap: clamp(0.7rem, 1.6vw, 1.1rem);
+
+      /* Anfangs verborgen; erscheint mit der Galerie */
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(10px);
+      transition: opacity 1s var(--ease-soft),
+                  visibility 1s var(--ease-soft),
+                  transform 1s var(--ease-soft);
+    }
+
+    .audio-bar.is-visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    /* Titel & Interpret – zurückhaltend, rechtsbündig links vom Button */
+    .audio-bar__meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      text-align: right;
+      line-height: 1.25;
+      max-width: 52vw;
+    }
+
+    .audio-bar__title {
+      font-family: var(--font-serif);
+      font-weight: 500;
+      font-size: clamp(0.95rem, 2.2vw, 1.15rem);
+      color: var(--color-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 52vw;
+    }
+
+    .audio-bar__artist {
+      font-family: var(--font-sans);
+      font-weight: 400;
+      font-size: clamp(0.72rem, 1.7vw, 0.85rem);
+      letter-spacing: 0.03em;
+      color: #7a7a7a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 52vw;
+    }
+
+    .audio-toggle {
+      flex: 0 0 auto;
       width: 56px;
       height: 56px;
       border: none;
@@ -306,21 +360,9 @@
       align-items: center;
       justify-content: center;
 
-      /* Anfangs verborgen; erscheint mit der Galerie */
-      opacity: 0;
-      visibility: hidden;
-      transform: translateY(10px);
-      transition: opacity 1s var(--ease-soft),
-                  visibility 1s var(--ease-soft),
-                  transform 0.45s var(--ease-soft),
+      transition: transform 0.45s var(--ease-soft),
                   background 0.45s var(--ease-soft),
                   box-shadow 0.45s var(--ease-soft);
-    }
-
-    .audio-toggle.is-visible {
-      opacity: 1;
-      visibility: visible;
-      transform: translateY(0);
     }
 
     .audio-toggle:hover,
@@ -407,11 +449,19 @@
   <!-- Audio-Element ohne sichtbare Steuerung (kein visibler Player) -->
   <audio id="audio" src="assets/song.mp3" preload="auto"></audio>
 
-  <!-- Dezenter Musik-Umschalter (erscheint mit der Galerie) -->
-  <button class="audio-toggle" id="audioToggle" aria-label="Musik pausieren">
-    <span class="audio-toggle__pause" aria-hidden="true"></span>
-    <span class="audio-toggle__play" aria-hidden="true"></span>
-  </button>
+  <!-- Dezente Musik-Leiste: Titel/Interpret + Umschalter
+       (erscheint gemeinsam mit der Galerie) -->
+  <div class="audio-bar" id="audioBar">
+    <div class="audio-bar__meta">
+      <span class="audio-bar__title">With You (feat. Kina Grannis)</span>
+      <span class="audio-bar__artist">I Fight Dragons</span>
+    </div>
+
+    <button class="audio-toggle" id="audioToggle" aria-label="Musik pausieren">
+      <span class="audio-toggle__pause" aria-hidden="true"></span>
+      <span class="audio-toggle__play" aria-hidden="true"></span>
+    </button>
+  </div>
 
   <script>
     /* =========================================================
@@ -427,29 +477,86 @@
       const galleryWrap  = document.getElementById('galleryWrap');
       const galleryIntro = document.getElementById('galleryIntro');
       const gallery      = document.getElementById('gallery');
+      const audioBar     = document.getElementById('audioBar');
       const audioToggle  = document.getElementById('audioToggle');
 
       let started = false; // verhindert Mehrfach-Auslösung
 
       /* ---------------------------------------------------------
-         Konfiguration der automatischen Bild-Erkennung
+         Konfiguration
          ---------------------------------------------------------
-         Ein statischer Server (z. B. GitHub Pages) liefert keine
-         Ordner-Auflistung. Deshalb werden die Bilder anhand ihres
-         Namensmusters "der Reihe nach" gesucht: photo1, photo2, …
-         Es wird geladen, bis eine Nummer in keiner der bekannten
-         Endungen mehr existiert. So werden automatisch ALLE Bilder
-         im assets-Ordner angezeigt – egal ob 3, 6 oder 20 Stück.
-         Einfach nach dem Muster benennen: photo1.jpg, photo2.jpg …
+         Ein statischer Server (z. B. GitHub Pages) liefert im Browser
+         keine Ordner-Auflistung. Damit die Namen der Fotos egal sind,
+         fragen wir stattdessen die öffentliche GitHub-API, welche
+         Dateien im Ordner "assets" liegen, und zeigen alle Bilder an –
+         unabhängig vom Dateinamen. Läuft die Seite lokal oder nicht auf
+         GitHub Pages, greift automatisch ein Fallback (photo1, photo2 …).
       --------------------------------------------------------- */
-      const IMAGE_BASE   = 'assets/';       // Namens-Präfix
-      const EXTENSIONS   = ['jpg', 'jpeg', 'png', 'webp']; // erlaubte Endungen
-      const MAX_IMAGES   = 60;                    // Sicherheits-Obergrenze
-      const STAGGER_MS   = 500;                   // Versatz zwischen Bildern
+      const ASSETS_DIR   = 'assets';                           // Bilder-Ordner
+      const IMAGE_REGEX  = /\.(jpe?g|png|webp|gif|avif)$/i;    // erlaubte Bild-Endungen
+      const STAGGER_MS   = 500;                                // Versatz zwischen Bildern
+      const MAX_FALLBACK = 60;                                 // Obergrenze im Fallback
+
+      /* Optional: Falls die automatische Erkennung von Nutzer/Repo
+         einmal nicht klappt, hier fest eintragen, z. B.:
+         const REPO_OVERRIDE = { owner: 'deinname', repo: 'erinnerung' };
+      */
+      const REPO_OVERRIDE = null;
 
       /**
-       * Versucht, eine Bild-URL zu laden. Löst mit der URL auf, wenn
-       * das Bild existiert – sonst mit null.
+       * Ermittelt aus der aktuellen Adresse Nutzer und Repository,
+       * wenn die Seite auf GitHub Pages läuft (…github.io).
+       * Gibt { owner, repo } zurück oder null.
+       */
+      function detectRepo() {
+        if (REPO_OVERRIDE) return REPO_OVERRIDE;
+
+        const host = window.location.hostname; // z. B. "name.github.io"
+        if (!host.endsWith('github.io')) return null;
+
+        const owner = host.split('.')[0];
+        // Erster Pfad-Abschnitt = Projekt-Repo; sonst User-Seiten-Repo
+        const seg = window.location.pathname.split('/').filter(Boolean);
+        const repo = seg.length ? seg[0] : (owner + '.github.io');
+        return { owner: owner, repo: repo };
+      }
+
+      /**
+       * Holt über die GitHub-API die Liste aller Bilddateien im
+       * assets-Ordner. Gibt ein Array von URLs zurück (leer bei Fehler).
+       */
+      async function fetchImageListFromGitHub() {
+        const info = detectRepo();
+        if (!info) return [];
+
+        const api = 'https://api.github.com/repos/' + info.owner +
+                    '/' + info.repo + '/contents/' + ASSETS_DIR;
+        try {
+          const res = await fetch(api);
+          if (!res.ok) return [];
+          const data = await res.json();
+          if (!Array.isArray(data)) return [];
+
+          return data
+            .filter(function (f) {
+              return f.type === 'file' && IMAGE_REGEX.test(f.name);
+            })
+            // Natürliche, stabile Sortierung nach Dateiname
+            .sort(function (a, b) {
+              return a.name.localeCompare(b.name, undefined, { numeric: true });
+            })
+            .map(function (f) {
+              // Gleiche Herkunft nutzen; Sonderzeichen im Namen kodieren
+              return ASSETS_DIR + '/' + encodeURIComponent(f.name);
+            });
+        } catch (e) {
+          return []; // Netzwerkfehler/Ratelimit -> Fallback greift
+        }
+      }
+
+      /**
+       * Fallback ohne GitHub-API: sucht der Reihe nach photo1, photo2 …
+       * (nützlich beim lokalen Testen). Gibt gefundene URLs zurück.
        */
       function tryLoad(url) {
         return new Promise(function (resolve) {
@@ -460,22 +567,24 @@
         });
       }
 
-      /**
-       * Sucht für eine Nummer (z. B. 3) das passende Bild über alle
-       * erlaubten Endungen hinweg. Gibt die erste gefundene URL zurück.
-       */
-      async function findImage(index) {
-        for (const ext of EXTENSIONS) {
-          const url = IMAGE_BASE + index + '.' + ext;
-          const found = await tryLoad(url);
-          if (found) return found;
+      async function fetchImageListFallback() {
+        const exts = ['jpg', 'jpeg', 'png', 'webp'];
+        const urls = [];
+        for (let i = 1; i <= MAX_FALLBACK; i++) {
+          let found = null;
+          for (const ext of exts) {
+            found = await tryLoad(ASSETS_DIR + '/photo' + i + '.' + ext);
+            if (found) break;
+          }
+          if (!found) break;
+          urls.push(found);
         }
-        return null;
+        return urls;
       }
 
       /**
-       * Fügt ein gefundenes Bild elegant in die Galerie ein und
-       * blendet es mit sanftem Versatz ein.
+       * Fügt ein Bild elegant in die Galerie ein und blendet es
+       * mit sanftem, gestaffeltem Versatz ein.
        */
       function appendImage(url, position) {
         const figure = document.createElement('figure');
@@ -489,15 +598,14 @@
         figure.appendChild(img);
         gallery.appendChild(figure);
 
-        // Reveal mit sanftem, gestaffeltem Versatz
         window.setTimeout(function () {
           figure.classList.add('reveal');
         }, 200 + position * STAGGER_MS);
       }
 
       /**
-       * Durchläuft photo1, photo2, … bis zur ersten fehlenden Nummer
-       * und zeigt alle gefundenen Bilder nacheinander an.
+       * Lädt die Bildliste (erst GitHub-API, sonst Fallback) und
+       * zeigt alle gefundenen Bilder nacheinander an.
        */
       async function loadGallery() {
         // Satz oben zuerst einblenden
@@ -505,13 +613,14 @@
           galleryIntro.classList.add('reveal');
         }, 300);
 
-        let count = 0;
-        for (let i = 1; i <= MAX_IMAGES; i++) {
-          const url = await findImage(i);
-          if (!url) break;          // keine weitere Nummer -> fertig
-          count++;
-          appendImage(url, count);
+        let urls = await fetchImageListFromGitHub();
+        if (urls.length === 0) {
+          urls = await fetchImageListFallback();
         }
+
+        urls.forEach(function (url, index) {
+          appendImage(url, index + 1);
+        });
       }
 
       /**
@@ -534,7 +643,7 @@
         // Galerie nach dem Ausblenden des Intros zeigen
         window.setTimeout(function () {
           galleryWrap.classList.add('is-visible');
-          audioToggle.classList.add('is-visible'); // Musik-Umschalter einblenden
+          audioBar.classList.add('is-visible'); // Musik-Leiste einblenden
           loadGallery();
 
           // Sanft zur Galerie scrollen
