@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Erinnerung</title>
 
   <!-- =========================================================
@@ -37,6 +37,9 @@
 
       /* Abstände */
       --space-page: clamp(1.5rem, 5vw, 4rem);
+
+      /* Höhe der Musik-Leiste (für den Sicherheitsabstand der Galerie) */
+      --audio-bar-space: calc(72px + env(safe-area-inset-bottom, 0px));
     }
 
     /* =========================================================
@@ -201,7 +204,10 @@
       visibility: hidden;
       transition: opacity 1.4s var(--ease-soft),
                   visibility 1.4s var(--ease-soft);
-      padding: clamp(4rem, 12vh, 9rem) var(--space-page);
+      /* Zusätzlicher Platz unten, damit die Musik-Leiste nie die
+         letzten Fotos überdeckt (inkl. iPhone-Sicherheitsbereich). */
+      padding: clamp(4rem, 12vh, 9rem) var(--space-page)
+               calc(clamp(4rem, 12vh, 9rem) + var(--audio-bar-space));
       min-height: 100vh;
     }
 
@@ -254,6 +260,7 @@
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 8px 30px rgba(45, 45, 45, 0.08);
+      cursor: zoom-in;               /* signalisiert: antippen zum Vergrößern */
 
       /* Startzustand für die gestaffelte Reveal-Animation */
       opacity: 0;
@@ -275,9 +282,11 @@
       transition: transform 0.7s var(--ease-soft);
     }
 
-    /* Dezente Vergrößerung beim Hover */
-    .gallery__item:hover img {
-      transform: scale(1.04);
+    /* Dezente Vergrößerung beim Hover (nur auf Geräten mit echtem Zeiger) */
+    @media (hover: hover) {
+      .gallery__item:hover img {
+        transform: scale(1.04);
+      }
     }
 
     /* =========================================================
@@ -286,12 +295,22 @@
     .audio-bar {
       position: fixed;
       right: clamp(1.2rem, 3vw, 2.2rem);
-      bottom: clamp(1.2rem, 3vw, 2.2rem);
+      bottom: calc(clamp(1.2rem, 3vw, 2.2rem) + env(safe-area-inset-bottom, 0px));
       z-index: 20;
 
       display: flex;
       align-items: center;
-      gap: clamp(0.7rem, 1.6vw, 1.1rem);
+      gap: clamp(0.6rem, 1.6vw, 1rem);
+
+      /* Leichtes Glas-Panel, damit Titel auch über Fotos gut lesbar ist */
+      padding: 0.4rem 0.5rem 0.4rem 1rem;
+      border-radius: 999px;
+      background: rgba(250, 250, 248, 0.72);
+      backdrop-filter: blur(12px) saturate(1.1);
+      -webkit-backdrop-filter: blur(12px) saturate(1.1);
+      box-shadow: 0 10px 34px rgba(45, 45, 45, 0.16),
+                  0 2px 8px rgba(45, 45, 45, 0.06);
+      max-width: calc(100vw - 2 * clamp(1.2rem, 3vw, 2.2rem));
 
       /* Anfangs verborgen; erscheint mit der Galerie */
       opacity: 0;
@@ -315,7 +334,7 @@
       align-items: flex-end;
       text-align: right;
       line-height: 1.25;
-      max-width: 52vw;
+      min-width: 0;                  /* erlaubt Ellipsis im Flex-Kind */
     }
 
     .audio-bar__title {
@@ -326,7 +345,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 52vw;
+      max-width: 100%;
     }
 
     .audio-bar__artist {
@@ -338,22 +357,20 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 52vw;
+      max-width: 100%;
     }
 
     .audio-toggle {
       flex: 0 0 auto;
-      width: 56px;
-      height: 56px;
+      width: 52px;
+      height: 52px;
       border: none;
       border-radius: 50%;
       cursor: pointer;
 
       /* Gleicher, leichter Glas-Look wie der Play-Button */
-      background: rgba(255, 255, 255, 0.65);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      box-shadow: 0 8px 28px rgba(45, 45, 45, 0.14),
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 6px 20px rgba(45, 45, 45, 0.14),
                   0 2px 6px rgba(45, 45, 45, 0.06);
 
       display: flex;
@@ -368,7 +385,7 @@
     .audio-toggle:hover,
     .audio-toggle:focus-visible {
       transform: scale(1.08);
-      background: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 1);
       outline: none;
     }
     .audio-toggle:active {
@@ -398,6 +415,97 @@
     /* Zustand "pausiert": Play-Symbol zeigen, Pause-Symbol ausblenden */
     .audio-toggle.is-paused .audio-toggle__pause { display: none; }
     .audio-toggle.is-paused .audio-toggle__play  { display: block; }
+
+    /* Auf sehr schmalen Handys darf der Titel den halben Screen nutzen */
+    @media (max-width: 520px) {
+      .audio-bar__title  { max-width: 46vw; }
+      .audio-bar__artist { max-width: 46vw; }
+    }
+
+    /* =========================================================
+       4c. Lightbox / Vollbild-Ansicht der Fotos
+       ========================================================= */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(0.8rem, 3vw, 2rem);
+      padding-top: calc(clamp(0.8rem, 3vw, 2rem) + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(clamp(0.8rem, 3vw, 2rem) + env(safe-area-inset-bottom, 0px));
+
+      background: rgba(28, 28, 28, 0.92);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.4s var(--ease-soft),
+                  visibility 0.4s var(--ease-soft);
+      cursor: zoom-out;
+    }
+
+    .lightbox.is-open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .lightbox__img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 10px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+
+      transform: scale(0.96);
+      transition: transform 0.4s var(--ease-soft);
+    }
+
+    .lightbox.is-open .lightbox__img {
+      transform: scale(1);
+    }
+
+    /* Schließen-Button oben rechts */
+    .lightbox__close {
+      position: absolute;
+      top: calc(clamp(0.6rem, 2vw, 1.2rem) + env(safe-area-inset-top, 0px));
+      right: clamp(0.6rem, 2vw, 1.2rem);
+
+      width: 48px;
+      height: 48px;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
+      font-size: 1.6rem;
+      line-height: 1;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      transition: background 0.3s var(--ease-soft),
+                  transform 0.3s var(--ease-soft);
+    }
+
+    .lightbox__close:hover,
+    .lightbox__close:focus-visible {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.08);
+      outline: none;
+    }
+
+    /* Verhindert Scrollen im Hintergrund, während die Lightbox offen ist */
+    body.lightbox-open {
+      overflow: hidden;
+    }
 
     /* =========================================================
        5. Keyframe-Animationen
@@ -463,6 +571,14 @@
     </button>
   </div>
 
+  <!-- =========================================================
+       Lightbox: Vollbild-Ansicht eines angetippten Fotos
+       ========================================================= -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Foto in Vollbild">
+    <button class="lightbox__close" id="lightboxClose" aria-label="Schließen">&times;</button>
+    <img class="lightbox__img" id="lightboxImg" src="" alt="" />
+  </div>
+
   <script>
     /* =========================================================
        JavaScript: steuert Ablauf, Musikstart und Reveal-Animationen
@@ -479,6 +595,9 @@
       const gallery      = document.getElementById('gallery');
       const audioBar     = document.getElementById('audioBar');
       const audioToggle  = document.getElementById('audioToggle');
+      const lightbox     = document.getElementById('lightbox');
+      const lightboxImg  = document.getElementById('lightboxImg');
+      const lightboxClose= document.getElementById('lightboxClose');
 
       let started = false; // verhindert Mehrfach-Auslösung
 
@@ -595,6 +714,11 @@
         img.alt = 'Erinnerung ' + position;
         img.loading = 'lazy';
 
+        // Antippen / Klick öffnet das Foto in Vollbild
+        figure.addEventListener('click', function () {
+          openLightbox(url, img.alt);
+        });
+
         figure.appendChild(img);
         gallery.appendChild(figure);
 
@@ -622,6 +746,47 @@
           appendImage(url, index + 1);
         });
       }
+
+      /* ---------------------------------------------------------
+         Lightbox: Foto in Vollbild öffnen / schließen
+         --------------------------------------------------------- */
+      function openLightbox(url, alt) {
+        lightboxImg.src = url;
+        lightboxImg.alt = alt || '';
+        lightbox.classList.add('is-open');
+        document.body.classList.add('lightbox-open');
+        // Fokus auf den Schließen-Button für Tastatur/Barrierefreiheit
+        lightboxClose.focus();
+      }
+
+      function closeLightbox() {
+        lightbox.classList.remove('is-open');
+        document.body.classList.remove('lightbox-open');
+        // Quelle nach dem Ausblenden leeren (spart Speicher)
+        window.setTimeout(function () {
+          if (!lightbox.classList.contains('is-open')) {
+            lightboxImg.src = '';
+          }
+        }, 400);
+      }
+
+      // Klick auf den Hintergrund oder das Bild schließt die Lightbox
+      lightbox.addEventListener('click', closeLightbox);
+      lightboxClose.addEventListener('click', function (e) {
+        e.stopPropagation();
+        closeLightbox();
+      });
+      // Klick auf das Bild selbst soll ebenfalls schließen (zoom-out)
+      lightboxImg.addEventListener('click', function (e) {
+        e.stopPropagation();
+        closeLightbox();
+      });
+      // Escape-Taste schließt die Lightbox
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && lightbox.classList.contains('is-open')) {
+          closeLightbox();
+        }
+      });
 
       /**
        * Startet die Erinnerung: Musik abspielen, Intro ausblenden,
